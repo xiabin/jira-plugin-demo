@@ -1,0 +1,13 @@
+#requireResource("com.example.demo.demo:demo-resources")
+<html>
+<head>
+    <title>Hello World!</title>
+    <meta name="decorator" content="atl.general"/>
+
+    <script type="text/javascript" src="$webResourceManager.getResourceUrl('demo-resources', 'demo.js')"></script>
+</head>
+<body>
+<h1>Hello World!</h1>
+<p>Welcome to my Jira plugi1n.</p>
+</body>
+</html>
