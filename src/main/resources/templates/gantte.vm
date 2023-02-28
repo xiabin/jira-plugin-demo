@@ -11,26 +11,64 @@
             font-family: sans-serif;
             background: #ccc;
         }
+
         .container {
             width: 100%;
             height: 100%;
             margin: 0 auto;
         }
+
         /* custom class */
         .gantt .bar-milestone .bar {
             fill: tomato;
         }
+
         .heading {
             text-align: center;
         }
     </style>
-    <link rel="stylesheet" href="dist/frappe-gantt.css" />
+    <link rel="stylesheet" href="dist/frappe-gantt.css"/>
     <script src="dist/frappe-gantt.js"></script>
 </head>
 <body>
 <div class="container">
     <div class="gantt-target"></div>
 </div>
+
+
+    #if ($issues.size() > 0)
+    <div id="issue-data">$issuesJson</div>
+    <div class="issues">
+        <table class="aui">
+            <thead>
+            <tr>
+                <th>Key</th>
+                <th>Summary</th>
+                <th>Assignee</th>
+                <th>开始时间</th>
+                <th>结束时间</th>
+            </tr>
+            </thead>
+            <tbody>
+                #foreach( $ganttIssue in $ganttIssueList )
+                <tr class="issue-line">
+                    <td class="issue-key">$ganttIssue.getKey()</td>
+                    <td class="issue-summary">$ganttIssue.getSummary()</td>
+                    <td class="issue-summary">$ganttIssue.getAssignee()</td>
+
+                    <td>
+                        $ganttIssue.getStartDate()
+                    </td>
+
+                    <td>
+                        $ganttIssue.getEndDate()
+                    </td>
+                </tr>
+                #end
+            </tbody>
+        </table>
+    </div>
+    #end
 <script>
     var tasks = [
         {

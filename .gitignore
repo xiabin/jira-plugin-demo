@@ -2,4 +2,3 @@
 *.iml
 *.log
 target/
-!target/jira/home/database/*
