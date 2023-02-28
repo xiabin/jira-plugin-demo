@@ -13,6 +13,7 @@ import com.atlassian.jira.jql.parser.JqlParseException;
 import com.atlassian.jira.jql.parser.JqlQueryParser;
 import com.atlassian.jira.security.JiraAuthenticationContext;
 import com.atlassian.jira.user.ApplicationUser;
+import com.atlassian.jira.util.I18nHelper;
 import com.atlassian.jira.web.bean.PagerFilter;
 import com.atlassian.plugin.spring.scanner.annotation.imports.JiraImport;
 import com.atlassian.query.Query;
@@ -20,6 +21,7 @@ import com.atlassian.templaterenderer.TemplateRenderer;
 import com.atlassian.webresource.api.assembler.PageBuilderService;
 import com.example.demo.entity.GanttIssue;
 import com.google.gson.Gson;
+import org.jfree.util.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,39 +77,49 @@ public class Gantte extends HttpServlet {
         }
 
         List<GanttIssue> ganttIssueList = new ArrayList<>();
+        Locale userLocale = ComponentAccessor.getJiraAuthenticationContext().getLocale();
 
         for (Issue issue : issues) {
             GanttIssue ganttIssue = new GanttIssue();
             ganttIssue.setKey(issue.getKey());
             ganttIssue.setSummary(issue.getSummary());
-            ganttIssue.setAssignee(issue.getAssignee().getDisplayName());
+            ApplicationUser assignee = issue.getAssignee();
+            if (assignee != null) {
+                ganttIssue.setAssignee(issue.getAssignee().getDisplayName());
+            }
             CustomFieldManager customFieldManager = ComponentAccessor.getCustomFieldManager();
 
-            CustomField customField = customFieldManager.getCustomFieldObjectByName("开始时间");
-            log.error("debug 开始时间 {}",customField);
-            Object customFieldValue = issue.getCustomFieldValue(customField);
-            log.error("debug  开始时间{}",customFieldValue);
-            ganttIssue.setStartDate(customFieldValue.toString());
 
-             customField = customFieldManager.getCustomFieldObjectByName("结束时间");
-            log.error("debug 结束时间 {}",customField);
-            customFieldValue = issue.getCustomFieldValue(customField);
-            log.error("debug  结束时间{}",customFieldValue);
-            ganttIssue.setEndDate(customFieldValue.toString());
+            String customFieldName = ComponentAccessor.getJiraAuthenticationContext().getI18nHelper().getText("StartDate", userLocale);
+            CustomField customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectsByName(customFieldName).stream()
+                .findFirst()
+                .orElse(null);
+            if (customField != null) {
+                Object customFieldValue = issue.getCustomFieldValue(customField);
+                ganttIssue.setStartDate(customFieldValue.toString());
+            } else {
+                throw new NullPointerException(String.format("customFieldName is StartDate userLocale is %s ", userLocale.toString()));
+            }
+
+            customFieldName = ComponentAccessor.getJiraAuthenticationContext().getI18nHelper().getText("EndDate", userLocale);
+            customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectsByName(customFieldName).stream()
+                .findFirst()
+                .orElse(null);
+            if (customField != null) {
+                Object customFieldValue = issue.getCustomFieldValue(customField);
+                ganttIssue.setEndDate(customFieldValue.toString());
+            } else {
+                throw new NullPointerException(String.format("customFieldName is EndDate userLocale is %s ", userLocale.toString()));
+            }
             ganttIssueList.add(ganttIssue);
         }
-        String issuesJson = issues.toString();
-        log.error("issues:{}", issues.toString());
-        log.error("issuesJson:{}", issues.toString());
-        context.put("issues", issues);
-        context.put("issuesJson", issuesJson);
         context.put("ganttIssueList", ganttIssueList);
+        context.put("ganttIssueListJson", new Gson().toJson(ganttIssueList));
 
 
         String templatePath = "/templates/gantte.vm";
         templateRenderer.render(templatePath, context, response.getWriter());
     }
-
 
 
     /**
