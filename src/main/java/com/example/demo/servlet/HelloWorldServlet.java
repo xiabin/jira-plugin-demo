@@ -35,7 +35,7 @@ public class HelloWorldServlet extends HttpServlet {
         throws ServletException, IOException {
         response.setContentType("text/html;charset=utf-8");
         Map<String, Object> context = new HashMap<>();
-
+        pageBuilderService.assembler().resources().requireWebResource("com.example.demo.demo:demo-resources");
         String templatePath = "/templates/helloworld.vm";
         templateRenderer.render(templatePath, context, response.getWriter());
 

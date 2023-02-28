@@ -1,33 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<atlassian-plugin key="${atlassian.plugin.key}" name="${project.name}" plugins-version="2"> 
-  <plugin-info> 
-    <description>${project.description}</description>  
-    <version>${project.version}</version>  
-    <vendor name="${project.organization.name}" url="${project.organization.url}"/>  
-    <param name="plugin-icon">images/pluginIcon.png</param>  
-    <param name="plugin-logo">images/pluginLogo.png</param> 
-  </plugin-info>  
-  <!-- add our i18n resource -->  
-  <resource type="i18n" name="i18n" location="demo"/>  
-  <!-- add our web resources -->  
-  <web-resource key="demo-resources" name="demo Web Resources"> 
-    <dependency>com.atlassian.auiplugin:ajs</dependency>  
-    <resource type="download" name="demo.css" location="/css/demo.css"/>  
-    <resource type="download" name="demo.js" location="/js/demo.js"/>  
-    <resource type="download" name="images/" location="/images"/>  
-    <context>demo</context> 
-  </web-resource>  
-  <servlet name="Hello World Servlet" key="helloWorld" class="com.example.demo.servlet.HelloWorldServlet"> 
-    <description>Says Hello World, Australia or your name.</description>  
-    <url-pattern>/helloworld</url-pattern>  
-    <init-param> 
-      <param-name>defaultName</param-name>  
-      <param-value>Australia</param-value> 
-    </init-param> 
-  </servlet>  
-  <servlet name="Gantte" i18n-name-key="gantte.name" key="gantte" class="com.example.demo.servlet.Gantte">
-    <description key="gantte.description">The Gantte Plugin</description>  
-    <url-pattern>/gantte</url-pattern> 
-  </servlet>
+<atlassian-plugin key="${atlassian.plugin.key}" name="${project.name}" plugins-version="2">
+    <plugin-info>
+        <description>${project.description}</description>
+        <version>${project.version}</version>
+        <vendor name="${project.organization.name}" url="${project.organization.url}"/>
+        <param name="plugin-icon">images/pluginIcon.png</param>
+        <param name="plugin-logo">images/pluginLogo.png</param>
+    </plugin-info>
+    <!-- add our i18n resource -->
+    <!-- add our web resources -->
+    <web-resource key="demo-resources" name="demo Web Resources">
+        <dependency>com.atlassian.auiplugin:ajs</dependency>
+        <resource type="download" name="demo.css" location="/css/demo.css"/>
+        <resource type="download" name="demo.js" location="/js/demo.js"/>
+        <resource type="download" name="images/" location="/images"/>
+        <context>demo</context>
+    </web-resource>
+
+    <web-resource key="gantt-resources" name="Gantt Resources">
+        <dependency>com.atlassian.auiplugin:ajs</dependency>
+        <resource type="download" name="frappe-gantt.css" location="/css/frappe-gantt.css"/>
+        <resource type="download" name="frappe-gantt.js" location="/js/frappe-gantt.js"/>
+        <context>gantt</context>
+    </web-resource>
+    <servlet name="Hello World Servlet" key="helloWorld" class="com.example.demo.servlet.HelloWorldServlet">
+        <description>Says Hello World, Australia or your name.</description>
+        <url-pattern>/helloworld</url-pattern>
+        <init-param>
+            <param-name>defaultName</param-name>
+            <param-value>Australia</param-value>
+        </init-param>
+    </servlet>
+    <servlet name="Gantte" i18n-name-key="gantte.name" key="gantte" class="com.example.demo.servlet.Gantte">
+        <description key="gantte.description">The Gantte Plugin</description>
+        <url-pattern>/gantte</url-pattern>
+    </servlet>
 </atlassian-plugin>
