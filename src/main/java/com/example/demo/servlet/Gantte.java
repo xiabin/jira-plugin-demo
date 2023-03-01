@@ -1,9 +1,12 @@
 package com.example.demo.servlet;
 
+import com.atlassian.jira.bc.issue.IssueService;
 import com.atlassian.jira.bc.issue.search.SearchService;
 import com.atlassian.jira.component.ComponentAccessor;
 import com.atlassian.jira.issue.CustomFieldManager;
 import com.atlassian.jira.issue.Issue;
+import com.atlassian.jira.issue.IssueInputParameters;
+import com.atlassian.jira.issue.MutableIssue;
 import com.atlassian.jira.issue.fields.CustomField;
 import com.atlassian.jira.issue.link.IssueLink;
 import com.atlassian.jira.issue.link.IssueLinkManager;
@@ -44,15 +47,48 @@ public class Gantte extends HttpServlet {
 
     @JiraImport
     private SearchService searchService;
+
+
+    @JiraImport
+    private IssueService issueService;
+
     @JiraImport
     private JiraAuthenticationContext authenticationContext;
 
-    public Gantte(TemplateRenderer templateRenderer, PageBuilderService pageBuilderService, SearchService searchService, JiraAuthenticationContext authenticationContext) {
+    public Gantte(TemplateRenderer templateRenderer, PageBuilderService pageBuilderService, SearchService searchService, IssueService issueService, JiraAuthenticationContext authenticationContext) {
         this.templateRenderer = templateRenderer;
         this.pageBuilderService = pageBuilderService;
         this.searchService = searchService;
         this.authenticationContext = authenticationContext;
+        this.issueService = issueService;
     }
+
+    @Override
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        ApplicationUser user = authenticationContext.getLoggedInUser();
+
+        Map<String, Object> context = new HashMap<>();
+
+        IssueInputParameters issueInputParameters = issueService.newIssueInputParameters();
+        MutableIssue issue = issueService.getIssue(user, req.getParameter("key")).getIssue();
+
+        CustomField customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectByName("My Date Field");
+        if (customField != null) {
+            // 设置自定义日期选择器字段的值
+//            mutableIssue.setCustomFieldValue(customField, localDate);
+        }
+
+
+        IssueService.UpdateValidationResult result =
+            issueService.validateUpdate(user, issue.getId(), issueInputParameters);
+
+        if (result.getErrorCollection().hasAnyErrors()) {
+            context.put("issue", issue);
+            context.put("errors", result.getErrorCollection().getErrors());
+            resp.setContentType("text/json;charset=utf-8");
+        }
+    }
+
 
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
