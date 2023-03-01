@@ -33,6 +33,12 @@ public class HelloWorldServlet extends HttpServlet {
 
     public void doGet(HttpServletRequest request, HttpServletResponse response)
         throws ServletException, IOException {
+
+
+        log.error("error  xiabin");
+        log.warn("warn xiabin");
+
+        log.info("info xiabin");
         response.setContentType("text/html;charset=utf-8");
         Map<String, Object> context = new HashMap<>();
         pageBuilderService.assembler().resources().requireWebResource("com.example.demo.demo:demo-resources");

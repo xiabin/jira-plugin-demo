@@ -48,6 +48,9 @@
                     end: "$ganttIssue.getEndDate()",
                     name: "$ganttIssue.getSummary()",
                     id: "$ganttIssue.getKey()",
+                    #if (!$ganttIssue.getDependency().isNull())
+                        dependencies:"$ganttIssue.getDependency()",
+                    #end
                 },
             #end
         #end

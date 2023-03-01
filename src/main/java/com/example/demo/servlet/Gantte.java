@@ -5,6 +5,8 @@ import com.atlassian.jira.component.ComponentAccessor;
 import com.atlassian.jira.issue.CustomFieldManager;
 import com.atlassian.jira.issue.Issue;
 import com.atlassian.jira.issue.fields.CustomField;
+import com.atlassian.jira.issue.link.IssueLink;
+import com.atlassian.jira.issue.link.IssueLinkManager;
 import com.atlassian.jira.issue.search.SearchException;
 import com.atlassian.jira.issue.search.SearchResults;
 import com.atlassian.jira.jql.builder.JqlClauseBuilder;
@@ -13,15 +15,14 @@ import com.atlassian.jira.jql.parser.JqlParseException;
 import com.atlassian.jira.jql.parser.JqlQueryParser;
 import com.atlassian.jira.security.JiraAuthenticationContext;
 import com.atlassian.jira.user.ApplicationUser;
-import com.atlassian.jira.util.I18nHelper;
 import com.atlassian.jira.web.bean.PagerFilter;
 import com.atlassian.plugin.spring.scanner.annotation.imports.JiraImport;
 import com.atlassian.query.Query;
 import com.atlassian.templaterenderer.TemplateRenderer;
 import com.atlassian.webresource.api.assembler.PageBuilderService;
 import com.example.demo.entity.GanttIssue;
+import com.example.demo.entity.GanttIssueTree;
 import com.google.gson.Gson;
-import org.jfree.util.Log;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,9 +31,6 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class Gantte extends HttpServlet {
@@ -67,7 +65,7 @@ public class Gantte extends HttpServlet {
             // 参数为空，抛出异常
             throw new IllegalArgumentException("jql不能为空");
         }
-        log.error("jql:{}", jql);
+        log.info("jql:{}", jql);
         pageBuilderService.assembler().resources().requireWebResource("com.example.demo.demo:gantt-resources");
         List<Issue> issues = null;
         try {
@@ -79,10 +77,14 @@ public class Gantte extends HttpServlet {
         List<GanttIssue> ganttIssueList = new ArrayList<>();
         Locale userLocale = ComponentAccessor.getJiraAuthenticationContext().getLocale();
 
+        HashMap<String, String> childParentMap = this.getParentChildRelations(issues);
+        log.info("issues is {}", issues.toString());
         for (Issue issue : issues) {
             GanttIssue ganttIssue = new GanttIssue();
             ganttIssue.setKey(issue.getKey());
             ganttIssue.setSummary(issue.getSummary());
+
+            ganttIssue.setId(issue.getId());
             ApplicationUser assignee = issue.getAssignee();
             if (assignee != null) {
                 ganttIssue.setAssignee(issue.getAssignee().getDisplayName());
@@ -90,29 +92,70 @@ public class Gantte extends HttpServlet {
             CustomFieldManager customFieldManager = ComponentAccessor.getCustomFieldManager();
 
 
-            String customFieldName = ComponentAccessor.getJiraAuthenticationContext().getI18nHelper().getText("StartDate", userLocale);
-            CustomField customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectsByName(customFieldName).stream()
-                .findFirst()
-                .orElse(null);
-            if (customField != null) {
-                Object customFieldValue = issue.getCustomFieldValue(customField);
-                ganttIssue.setStartDate(customFieldValue.toString());
-            } else {
-                throw new NullPointerException(String.format("customFieldName is StartDate userLocale is %s ", userLocale.toString()));
+            //todo 这里要优化 自定义字段多语言没有找到方案
+            for (String name : Arrays.asList("StartDate", "开始时间")) {
+                CustomField customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectsByName(name).stream()
+                    .findFirst()
+                    .orElse(null);
+                if (customField != null) {
+                    Object customFieldValue = issue.getCustomFieldValue(customField);
+                    ganttIssue.setStartDate(customFieldValue.toString());
+                }
             }
 
-            customFieldName = ComponentAccessor.getJiraAuthenticationContext().getI18nHelper().getText("EndDate", userLocale);
-            customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectsByName(customFieldName).stream()
-                .findFirst()
-                .orElse(null);
-            if (customField != null) {
-                Object customFieldValue = issue.getCustomFieldValue(customField);
-                ganttIssue.setEndDate(customFieldValue.toString());
+            if (ganttIssue.getStartDate().isEmpty()) {
+                throw new NullPointerException("customFieldName is  \"StartDate\", \"开始时间\"");
+            }
+
+
+            for (String name : Arrays.asList("EndDate", "结束时间")) {
+                CustomField customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectsByName(name).stream()
+                    .findFirst()
+                    .orElse(null);
+                if (customField != null) {
+                    Object customFieldValue = issue.getCustomFieldValue(customField);
+                    ganttIssue.setEndDate(customFieldValue.toString());
+                }
+            }
+
+            if (ganttIssue.getEndDate().isEmpty()) {
+                throw new NullPointerException("customFieldName is  \"EndDate\", \"结束时间\"");
+            }
+
+//            String customFieldName = ComponentAccessor.getJiraAuthenticationContext().getI18nHelper().getText("StartDate", userLocale);
+//            CustomField customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectsByName(customFieldName).stream()
+//                .findFirst()
+//                .orElse(null);
+//            if (customField != null) {
+//                Object customFieldValue = issue.getCustomFieldValue(customField);
+//                ganttIssue.setStartDate(customFieldValue.toString());
+//            } else {
+//                throw new NullPointerException(String.format("customFieldName is StartDate userLocale is %s after translation is %s", userLocale.toString(), customFieldName));
+//            }
+//
+//            customFieldName = ComponentAccessor.getJiraAuthenticationContext().getI18nHelper().getText("EndDate", userLocale);
+//            customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectsByName(customFieldName).stream()
+//                .findFirst()
+//                .orElse(null);
+//            if (customField != null) {
+//                Object customFieldValue = issue.getCustomFieldValue(customField);
+//                ganttIssue.setEndDate(customFieldValue.toString());
+//            } else {
+//                throw new NullPointerException(String.format("customFieldName is EndDate userLocale is %s after translation is %s", userLocale.toString(), customFieldName));
+//            }
+            if (childParentMap.containsKey(ganttIssue.getKey())) {
+                ganttIssue.setDependency(childParentMap.get(ganttIssue.getKey()));
             } else {
-                throw new NullPointerException(String.format("customFieldName is EndDate userLocale is %s ", userLocale.toString()));
+                ganttIssue.setDependency("root");
             }
             ganttIssueList.add(ganttIssue);
         }
+
+        //构建父子树
+        List<GanttIssue> ganttIssueTree = this.buildTree(ganttIssueList);
+
+        ganttIssueList = this.flattenTree(ganttIssueTree);
+
         context.put("ganttIssueList", ganttIssueList);
         context.put("ganttIssueListJson", new Gson().toJson(ganttIssueList));
 
@@ -145,4 +188,75 @@ public class Gantte extends HttpServlet {
         List<Issue> issueList = (searchResults != null) ? searchResults.getResults() : null;
         return issueList;
     }
+
+
+    private HashMap<String, String> getParentChildRelations(List<Issue> issues) {
+
+        String linkTypeName = "Parent Child";
+        HashMap<String, String> childParentMap = new HashMap<>();
+        IssueLinkManager issueLinkManager = ComponentAccessor.getIssueLinkManager();
+
+        for (Issue issue : issues) {
+            List<IssueLink> inwardLinks = issueLinkManager.getInwardLinks(issue.getId());
+            if (inwardLinks.size() > 0) {
+                log.info("issue is {} inwardLinks is {}", issue.toString(), inwardLinks.toString());
+            }
+            for (IssueLink link : inwardLinks) {
+                log.info("{} link type name is {}", issue.toString(), link.getIssueLinkType().getName());
+                if (link.getIssueLinkType().getName().equals(linkTypeName)) {
+                    Issue linkedIssue = link.getSourceObject();
+                    childParentMap.put(issue.getKey(), linkedIssue.getKey());
+                }
+            }
+        }
+        log.info("childParentMap is {}", childParentMap.toString());
+        return childParentMap;
+    }
+
+    private List<GanttIssue> buildTree(List<GanttIssue> ganttIssueList) {
+        Map<String, List<GanttIssue>> parentChildMap = new HashMap<>();
+
+        // 将所有节点的父子关系映射成map
+        for (GanttIssue ganttIssue : ganttIssueList) {
+            List<GanttIssue> children = parentChildMap.computeIfAbsent(ganttIssue.getDependency(), k -> new ArrayList<>());
+            children.add(ganttIssue);
+
+            //排序下 children 这里还有优化空间 可以等映射关系构建完了再排序 而不是每次都排序 TreeSet可以解决
+            //todo 优化
+            Collections.sort(children, Comparator.comparingLong(GanttIssue::getId));
+
+        }
+        List<GanttIssue> rootList = parentChildMap.get("root");
+
+        // 递归构建树
+        for (GanttIssue node : rootList) {
+            this.buildTreeRecursively(node, parentChildMap);
+        }
+        return rootList;
+    }
+
+
+    private void buildTreeRecursively(GanttIssue parenGanttIssue, Map<String, List<GanttIssue>> parentChildMap) {
+        List<GanttIssue> children = parentChildMap.get(parenGanttIssue.getKey());
+        if (children != null) {
+            parenGanttIssue.setChildren(children);
+            for (GanttIssue child : children) {
+                buildTreeRecursively(child, parentChildMap);
+            }
+        }
+    }
+
+    public static List<GanttIssue> flattenTree(List<GanttIssue> ganttIssueList) {
+        List<GanttIssue> flattened = new ArrayList<>();
+        for (GanttIssue node : ganttIssueList) {
+            flattened.add(node);
+            if (node.getChildren() != null && !node.getChildren().isEmpty()) {
+                flattened.addAll(flattenTree(node.getChildren()));
+            }
+        }
+        return flattened;
+    }
+
+
 }
+
