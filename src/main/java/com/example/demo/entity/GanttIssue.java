@@ -14,8 +14,8 @@ public class GanttIssue {
     private String key;
     private String summary;
     private String assignee;
-    private String startDate;
-    private String endDate;
+    private GanttCustomFiled startDate;
+    private GanttCustomFiled endDate;
 
     private String dependency;
 

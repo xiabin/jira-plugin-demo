@@ -44,12 +44,12 @@
         #if ($ganttIssueList.size() > 0)
             #foreach( $ganttIssue in $ganttIssueList )
                 {
-                    start: "$ganttIssue.getStartDate()",
-                    end: "$ganttIssue.getEndDate()",
+                    start: "$ganttIssue.getStartDate().getValue()",
+                    end: "$ganttIssue.getEndDate().getValue()",
                     name: "$ganttIssue.getSummary()",
                     id: "$ganttIssue.getKey()",
                     #if (!$ganttIssue.getDependency().isNull())
-                        dependencies:"$ganttIssue.getDependency()",
+                        dependencies: "$ganttIssue.getDependency()",
                     #end
                 },
             #end

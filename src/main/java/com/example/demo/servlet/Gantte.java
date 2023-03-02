@@ -18,11 +18,16 @@ import com.atlassian.jira.jql.parser.JqlParseException;
 import com.atlassian.jira.jql.parser.JqlQueryParser;
 import com.atlassian.jira.security.JiraAuthenticationContext;
 import com.atlassian.jira.user.ApplicationUser;
+import com.atlassian.jira.util.ErrorCollection;
+import com.atlassian.jira.util.I18nHelper;
+import com.atlassian.jira.util.json.JSONException;
+import com.atlassian.jira.util.json.JSONObject;
 import com.atlassian.jira.web.bean.PagerFilter;
 import com.atlassian.plugin.spring.scanner.annotation.imports.JiraImport;
 import com.atlassian.query.Query;
 import com.atlassian.templaterenderer.TemplateRenderer;
 import com.atlassian.webresource.api.assembler.PageBuilderService;
+import com.example.demo.entity.GanttCustomFiled;
 import com.example.demo.entity.GanttIssue;
 import com.example.demo.entity.GanttIssueTree;
 import com.google.gson.Gson;
@@ -34,6 +39,9 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class Gantte extends HttpServlet {
@@ -64,29 +72,88 @@ public class Gantte extends HttpServlet {
     }
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        ApplicationUser user = authenticationContext.getLoggedInUser();
+    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException, RuntimeException {
 
+        Locale userLocale = ComponentAccessor.getJiraAuthenticationContext().getLocale();
+
+        ApplicationUser user = authenticationContext.getLoggedInUser();
+        log.info("user is {}", user.toString());
         Map<String, Object> context = new HashMap<>();
 
         IssueInputParameters issueInputParameters = issueService.newIssueInputParameters();
-        MutableIssue issue = issueService.getIssue(user, req.getParameter("key")).getIssue();
+        String key = req.getParameter("key");
+        log.info("Key is {}", key);
 
-        CustomField customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectByName("My Date Field");
-        if (customField != null) {
-            // 设置自定义日期选择器字段的值
-//            mutableIssue.setCustomFieldValue(customField, localDate);
+        MutableIssue mutableIssue = issueService.getIssue(user, key).getIssue();
+
+        Long startDateNameCustomFiledId = Long.valueOf(req.getParameter("startDateCustomFileId"));
+        log.info("startDateNameCustomFiledId is {}", startDateNameCustomFiledId);
+
+
+        Long endDateNameCustomFiledId = Long.valueOf(req.getParameter("endDateNameCustomFiledId"));
+        log.info("endDateNameCustomFiledId is {}", endDateNameCustomFiledId);
+
+        String startDateString = req.getParameter("startDateString");
+        // 检查参数是否为空
+        if (startDateString == null || startDateString.trim().isEmpty()) {
+            // 参数为空，抛出异常
+            throw new IllegalArgumentException("startDateString 不能为空");
+        }
+
+        log.info("startDateString is {}", startDateString);
+
+        String endDateString = req.getParameter("endDateString");
+        // 检查参数是否为空
+        if (endDateString == null || endDateString.trim().isEmpty()) {
+            // 参数为空，抛出异常
+            throw new IllegalArgumentException("endDateString 不能为空");
+        }
+
+        log.info("startDateString is {}", endDateString);
+
+        CustomField startCustomField = ComponentAccessor.getCustomFieldManager().getCustomFieldObject(startDateNameCustomFiledId);
+        CustomField endCustomField = ComponentAccessor.getCustomFieldManager().getCustomFieldObject(endDateNameCustomFiledId);
+        log.info("startCustomField is {} , endCustomField is {} ", startCustomField, endCustomField);
+
+        if (startCustomField != null && endCustomField != null) {
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d/MMM/yy", userLocale);
+            LocalDate startDate = LocalDate.parse(startDateString.substring(0, 10));
+            LocalDate endDate = LocalDate.parse(endDateString.substring(0, 10));
+
+            String startFormattedDate = startDate.format(formatter);
+            String endFormattedDate = endDate.format(formatter);
+
+            issueInputParameters.addCustomFieldValue(startCustomField.getId(), startFormattedDate);
+            issueInputParameters.addCustomFieldValue(endCustomField.getId(), endFormattedDate);
+        } else {
+            log.error("startCustomField or endCustomField is null");
         }
 
 
-        IssueService.UpdateValidationResult result =
-            issueService.validateUpdate(user, issue.getId(), issueInputParameters);
+        IssueService.UpdateValidationResult result = issueService.validateUpdate(user, mutableIssue.getId(), issueInputParameters);
 
+        resp.setContentType("application/json;charset=UTF-8");
+
+        JSONObject json = new JSONObject();
         if (result.getErrorCollection().hasAnyErrors()) {
-            context.put("issue", issue);
-            context.put("errors", result.getErrorCollection().getErrors());
-            resp.setContentType("text/json;charset=utf-8");
+            try {
+                json.put("status", false);
+                json.put("errors", result.getErrorCollection().getErrorMessages().stream().findFirst());
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
+        } else {
+            issueService.update(user, result);
+
+            try {
+                json.put("status", true);
+            } catch (JSONException e) {
+                throw new RuntimeException(e);
+            }
         }
+        PrintWriter out = resp.getWriter();
+        out.print(json.toString());
+        out.flush();
     }
 
 
@@ -111,11 +178,14 @@ public class Gantte extends HttpServlet {
         }
 
         List<GanttIssue> ganttIssueList = new ArrayList<>();
+
         Locale userLocale = ComponentAccessor.getJiraAuthenticationContext().getLocale();
 
         HashMap<String, String> childParentMap = this.getParentChildRelations(issues);
         log.info("issues is {}", issues.toString());
         for (Issue issue : issues) {
+
+            log.info("key is {}", issue.getKey());
             GanttIssue ganttIssue = new GanttIssue();
             ganttIssue.setKey(issue.getKey());
             ganttIssue.setSummary(issue.getSummary());
@@ -128,34 +198,30 @@ public class Gantte extends HttpServlet {
             CustomFieldManager customFieldManager = ComponentAccessor.getCustomFieldManager();
 
 
-            //todo 这里要优化 自定义字段多语言没有找到方案
-            for (String name : Arrays.asList("StartDate", "开始时间")) {
-                CustomField customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectsByName(name).stream()
-                    .findFirst()
-                    .orElse(null);
-                if (customField != null) {
-                    Object customFieldValue = issue.getCustomFieldValue(customField);
-                    ganttIssue.setStartDate(customFieldValue.toString());
-                }
+            ganttIssue.setStartDate(new GanttCustomFiled());
+            ganttIssue.setEndDate(new GanttCustomFiled());
+            ganttIssue.getStartDate().setCustomFiledId(10000L);
+            ganttIssue.getEndDate().setCustomFiledId(10001L);
+
+            CustomField customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObject(ganttIssue.getStartDate().getCustomFiledId());
+            if (customField != null) {
+                Object customFieldValue = issue.getCustomFieldValue(customField);
+                ganttIssue.getStartDate().setValue(customFieldValue.toString());
             }
 
-            if (ganttIssue.getStartDate().isEmpty()) {
-                throw new NullPointerException("customFieldName is  \"StartDate\", \"开始时间\"");
+            if (ganttIssue.getStartDate().getValue().equals(null)) {
+                throw new NullPointerException(String.format("customField is  undefine %l", ganttIssue.getStartDate().getCustomFiledId()));
+            }
+
+            customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObject(ganttIssue.getEndDate().getCustomFiledId());
+            if (customField != null) {
+                Object customFieldValue = issue.getCustomFieldValue(customField);
+                ganttIssue.getEndDate().setValue(customFieldValue.toString());
             }
 
 
-            for (String name : Arrays.asList("EndDate", "结束时间")) {
-                CustomField customField = ComponentAccessor.getCustomFieldManager().getCustomFieldObjectsByName(name).stream()
-                    .findFirst()
-                    .orElse(null);
-                if (customField != null) {
-                    Object customFieldValue = issue.getCustomFieldValue(customField);
-                    ganttIssue.setEndDate(customFieldValue.toString());
-                }
-            }
-
-            if (ganttIssue.getEndDate().isEmpty()) {
-                throw new NullPointerException("customFieldName is  \"EndDate\", \"结束时间\"");
+            if (ganttIssue.getEndDate().getValue().equals(null)) {
+                throw new NullPointerException(String.format("customField is  undefine %l", ganttIssue.getEndDate().getCustomFiledId()));
             }
 
 //            String customFieldName = ComponentAccessor.getJiraAuthenticationContext().getI18nHelper().getText("StartDate", userLocale);
