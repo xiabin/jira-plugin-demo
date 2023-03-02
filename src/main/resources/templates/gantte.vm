@@ -40,47 +40,76 @@
     <div style="display: none" id="issue-data">$ganttIssueListJson</div>
     #end
 <script>
-    var tasks = [
-        #if ($ganttIssueList.size() > 0)
-            #foreach( $ganttIssue in $ganttIssueList )
-                {
-                    start: "$ganttIssue.getStartDate().getValue()",
-                    end: "$ganttIssue.getEndDate().getValue()",
-                    name: "$ganttIssue.getSummary()",
-                    id: "$ganttIssue.getKey()",
-                    #if (!$ganttIssue.getDependency().isNull())
-                        dependencies: "$ganttIssue.getDependency()",
-                    #end
-                },
+    AJS.$(document).ready(function () {
+        var tasks = [
+            #if ($ganttIssueList.size() > 0)
+                #foreach( $ganttIssue in $ganttIssueList )
+                    {
+                        start: "$ganttIssue.getStartDate().getValue()",
+                        end: "$ganttIssue.getEndDate().getValue()",
+                        name: "$ganttIssue.getSummary()",
+                        id: "$ganttIssue.getKey()",
+                        #if (!$ganttIssue.getDependency().isNull())
+                            dependencies: "$ganttIssue.getDependency()",
+                        #end
+                    },
+                #end
             #end
-        #end
-    ]
-    var gantt_chart = new Gantt(".gantt-target", tasks, {
-        header_height: 50,
-        column_width: 30,
-        step: 24,
-        view_modes: ['Quarter Day', 'Half Day', 'Day', 'Week', 'Month'],
-        bar_height: 20,
-        bar_corner_radius: 3,
-        arrow_curve: 5,
-        padding: 18,
-        view_mode: 'Day',
-        on_click: task => {
-            console.log(task);
-        },
-        on_date_change: (task, start, end) => {
-            console.log(task, start, end);
-        },
-        on_progress_change: (task, progress) => {
-            console.log(task, progress);
-        },
-        on_view_change: (mode) => {
-            console.log(mode);
-        },
-        view_mode: 'Week',
-        language: 'zh'
+        ]
+        var gantt_chart = new Gantt(".gantt-target", tasks, {
+            header_height: 50,
+            column_width: 30,
+            step: 24,
+            view_modes: ['Quarter Day', 'Half Day', 'Day', 'Week', 'Month'],
+            bar_height: 20,
+            bar_corner_radius: 3,
+            arrow_curve: 5,
+            padding: 18,
+            view_mode: 'Day',
+            on_click: task => {
+                console.log("on_click");
+
+                console.log(task);
+            },
+            on_date_change: (task, start, end) => {
+                console.log("on_date_change");
+
+
+                console.log(task, start, end);
+                //$ 在 Velocity 中是个特殊符号
+                jQuery.ajax({
+                    "url": "/jira/plugins/servlet/gantte",
+                    "method": "POST",
+                    "data": {
+                        "key": task.id,
+                        "startDateCustomFileId": 10000,
+                        "endDateNameCustomFiledId": 10001,
+                        "startDateString": start,
+                        "endDateString": end
+                    },
+                    success: function (data) {
+                        console.log(data);
+                    },
+                    error: function () {
+                        console.log('error', arguments);
+                    }
+                });
+            },
+            on_progress_change: (task, progress) => {
+                console.log("on_progress_change");
+                console.log(task, progress);
+            },
+            on_view_change: (mode) => {
+                console.log("on_view_change");
+
+                console.log(mode);
+            },
+            view_mode: 'Week',
+            language: 'zh'
+        });
+        console.log(gantt_chart);
     });
-    console.log(gantt_chart);
+
 </script>
 </body>
 </html>
