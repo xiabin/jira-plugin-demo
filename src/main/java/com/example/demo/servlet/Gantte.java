@@ -40,7 +40,9 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -93,23 +95,23 @@ public class Gantte extends HttpServlet {
         Long endDateNameCustomFiledId = Long.valueOf(req.getParameter("endDateNameCustomFiledId"));
         log.info("endDateNameCustomFiledId is {}", endDateNameCustomFiledId);
 
-        String startDateString = req.getParameter("startDateString");
+        Long startDateTimestamp = Long.valueOf(req.getParameter("startDate"));
         // 检查参数是否为空
-        if (startDateString == null || startDateString.trim().isEmpty()) {
+        if (startDateTimestamp == null || startDateTimestamp <= 0) {
             // 参数为空，抛出异常
-            throw new IllegalArgumentException("startDateString 不能为空");
+            throw new IllegalArgumentException("startDate 不合法");
         }
 
-        log.info("startDateString is {}", startDateString);
+        log.info("startDate is {}", startDateTimestamp);
 
-        String endDateString = req.getParameter("endDateString");
+        Long endDateTimestamp = Long.valueOf(req.getParameter("endDate"));
         // 检查参数是否为空
-        if (endDateString == null || endDateString.trim().isEmpty()) {
+        if (endDateTimestamp == null || endDateTimestamp <= 0) {
             // 参数为空，抛出异常
-            throw new IllegalArgumentException("endDateString 不能为空");
+            throw new IllegalArgumentException("endDate 不合法");
         }
 
-        log.info("startDateString is {}", endDateString);
+        log.info("startDateString is {}", endDateTimestamp);
 
         CustomField startCustomField = ComponentAccessor.getCustomFieldManager().getCustomFieldObject(startDateNameCustomFiledId);
         CustomField endCustomField = ComponentAccessor.getCustomFieldManager().getCustomFieldObject(endDateNameCustomFiledId);
@@ -117,9 +119,10 @@ public class Gantte extends HttpServlet {
 
         if (startCustomField != null && endCustomField != null) {
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d/MMM/yy", userLocale);
-            LocalDate startDate = LocalDate.parse(startDateString.substring(0, 10));
-            LocalDate endDate = LocalDate.parse(endDateString.substring(0, 10));
-
+            Instant instant = Instant.ofEpochMilli(startDateTimestamp);
+            LocalDate startDate = instant.atZone(ZoneId.systemDefault()).toLocalDate();
+            instant = Instant.ofEpochMilli(endDateTimestamp);
+            LocalDate endDate = instant.atZone(ZoneId.systemDefault()).toLocalDate();
             String startFormattedDate = startDate.format(formatter);
             String endFormattedDate = endDate.format(formatter);
 

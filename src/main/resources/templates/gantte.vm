@@ -84,14 +84,14 @@
                         "key": task.id,
                         "startDateCustomFileId": 10000,
                         "endDateNameCustomFiledId": 10001,
-                        "startDateString": start,
-                        "endDateString": end
+                        "startDate": new Date(start).getTime(),
+                        "endDate": new Date(end).getTime()
                     },
                     success: function (data) {
                         console.log(data);
                     },
-                    error: function () {
-                        console.log('error', arguments);
+                    error: function (data) {
+                        console.log('error',data);
                     }
                 });
             },
