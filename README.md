@@ -17,3 +17,5 @@ https://developer.atlassian.com/display/DOCS/Introduction+to+the+Atlassian+Plugi
 2. https://developer.atlassian.com/server/jira/platform/tutorials_and_guides/
 3. https://www.cnblogs.com/DevilMayCry-Samsara/p/6052286.html
 4. https://codeclou.github.io/kitchen-duty-plugin-for-atlassian-jira/tutorial/06-step-03-planning-page--user-search-js-controller/
+5. https://developer.atlassian.com/server/framework/atlassian-sdk/getting-started-with-active-objects/#step-12--seed-the-database-with-some-test-data
+6. https://developer.atlassian.com/server/framework/atlassian-sdk/tutorials-and-guides/
